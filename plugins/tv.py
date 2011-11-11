@@ -165,19 +165,18 @@ def tv(irc, nick, chan, msg, args):
     .tv search <show>
     """
     try:
-        command, show = msg.split(' ', 1)
+        command, *show = msg.split(' ', 1)
 
-    except ValueError:
-        command, show = None, msg
+        if command not in commands:
+            command, show = 'next', msg
 
-    try:
         commands = {
             'search': lambda: search(show),
             'next': lambda: when(irc, chan, show)
         }
+
         return commands[command]()
 
-    except KeyError:
-        # If the command wasn't found, we'll just look up when something airs
-        # as that's the most common use for this plugin.
-        return when(irc, chan, msg)
+
+    except ValueError:
+        return "You need to give me a TV show, or a command."

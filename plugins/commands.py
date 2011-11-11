@@ -81,6 +81,11 @@ def commands(irc, prefix, command, args):
         else:
             return None
 
+    # Ignore messages consisting of only an exclamation mark, there's no point
+    # in parsing these at all.
+    if args[1] == '!':
+        return None
+
     # Split arguments into pipeable pieces, using '|' characters found directly
     # before another command as the splitting point.
     pieces = re.findall(r'!(.*?)(?:\|\s*(?=!)|$)', args[1])
@@ -118,7 +123,7 @@ def commands(irc, prefix, command, args):
 
             # When more than one potential command is found...
             if len(possibilities) > 1:
-                return "Which did you want?  %s" % str(possibilities)[1:-1]
+                return "Ambiguous: %s" % str(possibilities)[1:-1].replace('\'', '')
 
             # The output of the last command is the input to the next one, if
             # there is no next command, this is returned to the user.
@@ -134,53 +139,8 @@ def command_forwarder(irc, prefix, command, args):
     This acts as the actual PRIVMSG handler, the reason for this is that it
     allows `commands` to return a message instead of using irc.reply, this
     also means that `commands` can be called manually to simulate a command
-    being called.
+    being called from other plugins.
     """
     output = commands(irc, prefix, command, args)
     if output is not None:
         irc.reply(output)
-
-
-@command
-def help(irc, nick, chan, msg, args):
-    """
-    Get help about a command.
-    .help <command>
-    .help <command> full
-    .help list
-    """
-    if msg == '':
-        msg = 'help'
-
-    # Try and get the help information by looking up the commands docstring
-    # from the command dictionary.
-    try:
-        cmd = msg.split(' ')
-
-        # Print out currently installed commands if 'list' is the command.
-        if cmd[0] == 'list':
-            output = "Commands: "
-            for item in commandlist.keys():
-                output += item + ', '
-
-            return output[:-2]
-
-        # Fetch the commands docstring.
-        info = commandlist[cmd[0]].__doc__.strip().split('\n')
-
-        # If the user supplied 'full' to their help, we should notice them
-        # instead as the help could be long from long help messages.
-        if len(cmd) > 1 and cmd[1] == 'full' or cmd[0] == 'help':
-            for line in info:
-                irc.notice(nick, line.strip())
-                time.sleep(0.1)
-
-            return None
-
-    except KeyError:
-        return "Command not found."
-
-    except AttributeError:
-        return "This command has no help information."
-
-    return info[0].strip()
